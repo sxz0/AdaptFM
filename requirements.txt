@@ -1,0 +1,14 @@
+# Inference
+vllm
+
+# Quantization
+gptqmodel
+autoawq
+
+# Model loading
+transformers
+safetensors
+torch
+
+# Evaluation
+lm-eval
