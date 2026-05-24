@@ -12,6 +12,9 @@ gptqmodel-7.0.0.tgz
 # Logs
 *.log
 
+# Claude Code
+.claude/
+
 # Python
 __pycache__/
 *.py[cod]
