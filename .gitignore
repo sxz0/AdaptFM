@@ -1,0 +1,18 @@
+# Model weights (large binary files)
+qwen-weights/
+qwen-weights-gptq/
+qwen-weights-pruned/
+qwen-weights-pruned-gptq/
+qwen-weights-awq/
+
+# Archives
+image.tar.gz
+gptqmodel-7.0.0.tgz
+
+# Logs
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/

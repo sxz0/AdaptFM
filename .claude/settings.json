@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk '{print $2}')",
+      "Bash(docker run *)",
+      "Bash(.venv/bin/pip download *)",
+      "Read(//tmp/**)",
+      "Bash(cp -r .venv/lib/python3.12/site-packages/gptqmodel       gptqmodel-pkg/)",
+      "Bash(cp -r .venv/lib/python3.12/site-packages/gptqmodel_ext   gptqmodel-pkg/)",
+      "Bash(cp -r .venv/lib/python3.12/site-packages/gptqmodel-7.0.0.dist-info gptqmodel-pkg/)",
+      "Bash(curl -s \"https://adaptfm.gitlab.io/call-for-competition/\")"
+    ]
+  }
+}

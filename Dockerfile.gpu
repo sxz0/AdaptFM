@@ -1,0 +1,14 @@
+FROM adaptfm/adaptfm-base:latest
+
+# Flash-linear-attention: activates optimized CUDA path for Qwen3.5 hybrid layers
+RUN pip install --no-build-isolation causal-conv1d flash-linear-attention
+
+ENV TRANSFORMERS_OFFLINE=1
+ENV HF_DATASETS_OFFLINE=1
+ENV HF_HUB_OFFLINE=1
+
+COPY serve_gpu.py /opt/program/serve_default.py
+COPY qwen-weights-gptq /opt/ml/model/
+COPY qwen_no_think.jinja /opt/ml/qwen_no_think.jinja
+
+EXPOSE 8080

@@ -1,0 +1,6 @@
+.venv/
+qwen-weights/
+*.log
+*.tar.gz
+__pycache__/
+*.pyc
