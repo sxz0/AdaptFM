@@ -1,0 +1,29 @@
+FROM adaptfm/adaptfm-base:latest
+
+# ── llama-cpp-python with CUDA (A10G = sm_86) ─────────────────────────────────
+# Compiles the GGML CUDA backend — ~5-10 min, much faster than flash_attn.
+RUN CMAKE_ARGS="-DGGML_CUDA=on -DCMAKE_CUDA_ARCHITECTURES=86" \
+    FORCE_CMAKE=1 \
+    pip install llama-cpp-python --no-cache-dir
+
+# ── Offline mode ───────────────────────────────────────────────────────────────
+ENV TRANSFORMERS_OFFLINE=1
+ENV HF_DATASETS_OFFLINE=1
+ENV HF_HUB_OFFLINE=1
+
+# ── Serve script ───────────────────────────────────────────────────────────────
+COPY serve_gguf.py /opt/program/serve_default.py
+
+# ── Bake in GGUF weights ───────────────────────────────────────────────────────
+# Generate the weights first:
+#   docker run --rm -v /data:/data ghcr.io/ggerganov/llama.cpp:full \
+#     bash -c "python3 /app/convert_hf_to_gguf.py /data/models/qwen-weights \
+#              --outfile /data/models/qwen-weights-f16.gguf --outtype f16 && \
+#              llama-quantize /data/models/qwen-weights-f16.gguf \
+#                             /data/models/qwen-weights-q4km.gguf Q4_K_M"
+# Then symlink into project dir and build:
+#   ln -sfn /data/models/qwen-weights-q4km.gguf ./qwen-weights-q4km.gguf
+#   docker build -f Dockerfile.gguf -t my-submission-gguf:latest .
+COPY qwen-weights-q4km.gguf /opt/ml/model/model.gguf
+
+EXPOSE 8080

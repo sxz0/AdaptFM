@@ -1,14 +1,27 @@
 FROM adaptfm/adaptfm-base:latest
 
-# Flash-linear-attention: activates optimized CUDA path for Qwen3.5 hybrid layers
-RUN pip install --no-build-isolation causal-conv1d flash-linear-attention
+# ── ExLlamaV3 optimisation stack ──────────────────────────────────────────────
+# causal-conv1d: activates the optimised CUDA path for Qwen3.5 hybrid SSM layers
+# flash-linear-attention: fused linear-attention kernels
+# exllamav3: high-performance EXL3 inference engine (cp310, cu128, torch 2.10.0)
+RUN pip install --no-build-isolation causal-conv1d flash-linear-attention \
+ && pip install \
+    https://github.com/turboderp-org/exllamav3/releases/download/v0.0.37/exllamav3-0.0.37+cu128.torch2.10.0-cp310-cp310-linux_x86_64.whl
 
+# ── Offline mode ──────────────────────────────────────────────────────────────
 ENV TRANSFORMERS_OFFLINE=1
 ENV HF_DATASETS_OFFLINE=1
 ENV HF_HUB_OFFLINE=1
 
+# ── Serve script & config ─────────────────────────────────────────────────────
 COPY serve_gpu.py /opt/program/serve_default.py
-COPY qwen-weights-gptq /opt/ml/model/
 COPY qwen_no_think.jinja /opt/ml/qwen_no_think.jinja
+
+# ── Bake in EXL3 quantised weights ────────────────────────────────────────────
+# Build the quantised weights first:
+#   python3 quantize_ex3.py
+# then run:
+#   docker build -f Dockerfile.gpu -t my-submission:latest .
+COPY qwen-weights-exl3-4bpw /opt/ml/model/
 
 EXPOSE 8080
