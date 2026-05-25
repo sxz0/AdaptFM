@@ -1,0 +1,21 @@
+FROM adaptfm/adaptfm-base:latest
+
+# ── MTP speculative decoding ───────────────────────────────────────────────────
+# Qwen3.5-4B has a built-in MTP prediction head (mtp_num_hidden_layers=1).
+# vLLM 0.19.0 supports native "mtp" speculative decoding that uses this head
+# to predict 1 extra token per forward pass (~1.5-1.8x decode speedup).
+#
+# Also enables prefix caching for shared system prompts across competition tasks.
+#
+# No additional packages needed — vLLM in the base image already supports MTP.
+# Weights are mounted at /opt/ml/model by SageMaker at inference time.
+
+# ── Offline mode ───────────────────────────────────────────────────────────────
+ENV TRANSFORMERS_OFFLINE=1
+ENV HF_DATASETS_OFFLINE=1
+ENV HF_HUB_OFFLINE=1
+
+# ── Serve script ───────────────────────────────────────────────────────────────
+COPY serve_mtp.py /opt/program/serve_default.py
+
+EXPOSE 8080
