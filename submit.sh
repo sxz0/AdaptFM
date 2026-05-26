@@ -51,12 +51,13 @@ case "$VARIANT" in
 esac
 
 # Tarball must be exactly image.tar.gz (competition API requirement).
-TARBALL="image.tar.gz"
+# Written to /data (332 GB free) — the workspace root disk is only 25 GB.
+TARBALL="/data/image.tar.gz"
 UPLOAD_RESP="/tmp/afm_upload_resp.json"
 
 # If a tarball already exists from a different variant, remove it so we
 # don't accidentally upload the wrong image.
-LAST_VARIANT_FILE=".last_variant"
+LAST_VARIANT_FILE="/data/.last_variant"
 if [ -f "$TARBALL" ] && [ -f "$LAST_VARIANT_FILE" ]; then
   LAST_VARIANT=$(cat "$LAST_VARIANT_FILE")
   if [ "$LAST_VARIANT" != "$VARIANT" ]; then
@@ -89,7 +90,7 @@ fi
 
 # ── Step 1: Build ─────────────────────────────────────────────────────────────
 # For the gpu variant, EXL3 weights live in /data/models/ (outside build context).
-# Create a workspace symlink so Dockerfile.gpu's COPY picks them up.
+# Docker COPY cannot follow symlinks outside the workspace, so we copy them in.
 EXL3_WEIGHTS_SRC="/data/models/qwen-weights-exl3-4bpw"
 EXL3_WEIGHTS_LINK="qwen-weights-exl3-4bpw"
 if [ "$VARIANT" = "gpu" ]; then
@@ -98,20 +99,23 @@ if [ "$VARIANT" = "gpu" ]; then
     echo "       Run quantisation first: python3 quantize_ex3.py"
     exit 1
   fi
-  if [ ! -e "$EXL3_WEIGHTS_LINK" ]; then
-    ln -s "$EXL3_WEIGHTS_SRC" "$EXL3_WEIGHTS_LINK"
-    log "Symlinked EXL3 weights into build context ($EXL3_WEIGHTS_LINK → $EXL3_WEIGHTS_SRC)"
+  # Remove any stale symlink/dir from previous attempts
+  if [ -L "$EXL3_WEIGHTS_LINK" ] || [ -d "$EXL3_WEIGHTS_LINK" ]; then
+    rm -rf "$EXL3_WEIGHTS_LINK"
   fi
+  log "Weights will be supplied via --build-context (no workspace copy needed)."
 fi
 
 log "Building Docker image '$IMAGE_TAG' from $DOCKERFILE ..."
-DOCKER_BUILDKIT=1 docker build -f "$DOCKERFILE" -t "$IMAGE_TAG" .
-log "Build complete."
-
-# Clean up the temporary symlink after a successful build
-if [ "$VARIANT" = "gpu" ] && [ -L "$EXL3_WEIGHTS_LINK" ]; then
-  rm -f "$EXL3_WEIGHTS_LINK"
+if [ "$VARIANT" = "gpu" ]; then
+  # Pass weights as a named BuildKit context — avoids copying 4 GB to the workspace
+  DOCKER_BUILDKIT=1 docker build \
+    --build-context "weights=${EXL3_WEIGHTS_SRC}" \
+    -f "$DOCKERFILE" -t "$IMAGE_TAG" .
+else
+  DOCKER_BUILDKIT=1 docker build -f "$DOCKERFILE" -t "$IMAGE_TAG" .
 fi
+log "Build complete."
 
 # ── Step 2: Save ──────────────────────────────────────────────────────────────
 if [ -f "$TARBALL" ]; then

@@ -14,12 +14,15 @@ COPY serve_gpu.py /opt/program/serve_default.py
 COPY qwen_no_think.jinja /opt/ml/qwen_no_think.jinja
 
 # ── Bake in EXL3 quantised weights (4bpw) ─────────────────────────────────────
-# Generate weights first:
-#   docker run --gpus all -v /data:/data exl3-base:latest \
-#     python3 /data/quantize_ex3.py --skip-install
-# This produces: /data/models/qwen-weights-exl3-4bpw/
-# Then:
-#   docker build -f Dockerfile.gpu -t my-submission:latest .
-COPY qwen-weights-exl3-4bpw /opt/ml/model/
+# Weights are supplied via BuildKit named context "weights" to avoid copying
+# 4 GB into the build workspace (which may be on a small disk).
+#
+# Build command (see submit.sh):
+#   DOCKER_BUILDKIT=1 docker build \
+#     --build-context weights=/data/models/qwen-weights-exl3-4bpw \
+#     -f Dockerfile.gpu -t afm-submission:latest .
+COPY --from=weights . /opt/ml/model/
 
 EXPOSE 8080
+
+ENTRYPOINT ["python3", "/opt/program/serve_default.py"]
