@@ -9,11 +9,9 @@ ENV TRANSFORMERS_OFFLINE=1
 ENV HF_DATASETS_OFFLINE=1
 ENV HF_HUB_OFFLINE=1
 
-# ── Serve script & no-think jinja template ────────────────────────────────────
-COPY serve_gpu.py /opt/program/serve_default.py
-COPY qwen_no_think.jinja /opt/ml/qwen_no_think.jinja
-
 # ── Bake in EXL3 quantised weights (4bpw) ─────────────────────────────────────
+# Weights first — they're large and rarely change, so putting them before the
+# serve script means editing serve_gpu.py doesn't bust the weights cache layer.
 # Weights are supplied via BuildKit named context "weights" to avoid copying
 # 4 GB into the build workspace (which may be on a small disk).
 #
@@ -22,6 +20,10 @@ COPY qwen_no_think.jinja /opt/ml/qwen_no_think.jinja
 #     --build-context weights=/data/models/qwen-weights-exl3-4bpw \
 #     -f Dockerfile.gpu -t afm-submission:latest .
 COPY --from=weights . /opt/ml/model/
+
+# ── Serve script & no-think jinja template ────────────────────────────────────
+COPY serve_gpu.py /opt/program/serve_default.py
+COPY qwen_no_think.jinja /opt/ml/qwen_no_think.jinja
 
 EXPOSE 8080
 

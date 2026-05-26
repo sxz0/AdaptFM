@@ -207,10 +207,21 @@ def run_quality_eval():
             class _Handler(BaseHTTPRequestHandler):
                 protocol_version = "HTTP/1.1"
                 def log_message(self, *a): pass
+                def do_GET(self):
+                    # lm_eval's OpenAI client probes /v1/models on init — return stub
+                    body = json.dumps({"object": "list", "data": [
+                        {"id": "Qwen/Qwen3.5-4B", "object": "model"}
+                    ]}).encode()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Content-Length", str(len(body)))
+                    self.end_headers()
+                    self.wfile.write(body)
                 def do_POST(self):
                     try:
                         body = self.rfile.read(int(self.headers.get("Content-Length", 0)))
-                        req = urllib.request.Request(f"{CONTAINER_URL}/invocations",
+                        # Forward to /v1/chat/completions (proper OpenAI format)
+                        req = urllib.request.Request(f"{CONTAINER_URL}/v1/chat/completions",
                             data=body, headers={"Content-Type": "application/json"})
                         resp = urllib.request.urlopen(req, timeout=120)
                         result = resp.read()
